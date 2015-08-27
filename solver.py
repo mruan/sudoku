@@ -1,10 +1,10 @@
 class Solver(object):
 
     def __init__(self):
-        self.raw_map = [list()] * 9
-        self.infomap = [[[]]]
-        for i in range(9):
-        self.todo = []
+        self.raw_map = [[] for _ in range(9)]
+        self.infomap = [[[1,2,3,4,5,6,7,8,9] for _ in range(9)] for _ in range(9)]
+        self.debug   = [[9]*9 for _ in range(9)]
+        self.todo = [] # [(num, row, col)]
 
     def rc2ind(self, i, j):
         return i * 9 + j
@@ -35,67 +35,81 @@ class Solver(object):
         for i in range(9):
 
             buffer = ' '.join(self.raw_map[i])
-            print(buffer)
 
-    def check_unique(self, row, col, num):
-        idx = self.rc2ind(row, col)
-        print(row, col, self.infomap[idx])
+            debug_buffer = '     %d %d %d %d %d %d %d %d %d' %(
+                self.debug[i][0], self.debug[i][1], self.debug[i][2],
+                self.debug[i][3], self.debug[i][4], self.debug[i][5],
+                self.debug[i][6], self.debug[i][7], self.debug[i][8])
+            print(buffer + debug_buffer)
+
+    def check_unique(self, num, row, col):
+
+        list_ptr = self.infomap[row][col]
+ #       print(row, col, list_ptr)
         try:
-            self.infomap[idx].remove(num)
+            list_ptr.remove(num)
         except ValueError:
             pass
 
-        # Not it's unique, has to be the answer
-        if len(self.infomap[idx])==1:
-            unique_int = self.infomap[idx]
-            self.todo.append((idx, unique_int))
-            self.infomap[idx].clear()
-            self.raw_map[row][col] = "%d" % unique_int
+        # Now it's unique, has to be the answer
+        if len(list_ptr)==1:
 
-    def sqr_sweep(self, row, col, num):
+            unique_int = list_ptr.pop()
+            self.todo.append((unique_int, row, col))
+            self.raw_map[row][col] = "%d" % unique_int
+            print("Unique item found: %d at (%d %d)" % (unique_int, row, col))
+            self.pp()
+            a = input()
+
+        self.debug[row][col] = len(list_ptr)
+ #       print(row, col, list_ptr)
+
+    def sqr_sweep(self, num, row, col):
      
         r = row // 3 * 3
         c = col // 3 * 3
 
         for i in range(r, r+3):
             for j in range(c, c+3):
-                self.check_unique(i, j, num)
+                self.check_unique(num, i, j)
 
-    def row_sweep(self, row, num):
+    def row_sweep(self, num, row):
 
         for j in range(9):
-            self.check_unique(row, j, num)
+            self.check_unique(num, row, j)
 
-    def col_sweep(self, col, num):
+    def col_sweep(self, num, col):
 
         for i in range(9):
-            self.check_unique(i, col, num)
+            self.check_unique(num, i, col)
 
     def solve(self):
 
-        print(self.todo)
+        for item in self.todo:
+            num, row, col = item
+            self.infomap[row][col].clear()
+            self.debug[row][col] = len(self.infomap[row][col])
 
-        num, row, col = self.todo.pop()
+#        self.row_sweep(num, row)
+#        self.col_sweep(num, col)
+#        self.sqr_sweep(num, row, col)
+        while len(self.todo)>0:
+            print(self.todo)
+            num, row, col = self.todo.pop()
+            print(num, row, col)
 
-        print(idx, num)
+            self.row_sweep(num, row)
+            self.col_sweep(num, col)
+            self.sqr_sweep(num, row, col)
 
-        row, col = self.ind2rc(idx)
-        self.row_sweep(row, num)
-#        while True: 
-#            idx, num = self.todo.pop()
-
-#            row, col = ind2rc(idx)
-#            row_sweep(row, num)
-#            col_sweep(col, num)
-#            sqr_sweep(row, col, num)
-
-
+        self.pp()
+        
 def main():
     mysolver = Solver()
 
     mysolver.read("game1.txt")
 
-#    mysolver.pp()
+    mysolver.pp()
     mysolver.solve()
 
 if __name__ == '__main__':
