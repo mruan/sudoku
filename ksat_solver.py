@@ -145,6 +145,8 @@ class kSAT_Solver(object):
 				if char !='.':
 					self.todo.append((i,j,int(char)-1))
 
+		return 1
+
 	def print_raw(self):
 
 		for i in range(9):
@@ -161,7 +163,7 @@ class kSAT_Solver(object):
 def main():
 	mysolver = kSAT_Solver()
 
-	mysolver.read("sudoku/game1.txt")
+	mysolver.read("game1.txt")
 
 	print("Input puzzle:")
 	mysolver.print_raw()
