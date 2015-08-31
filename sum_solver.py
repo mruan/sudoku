@@ -102,6 +102,10 @@ class Sum_Solver(object):
 		self.todo.append((row, col, lev))
 		self.raw_map[row][col] = '%d' % (lev+1)
 
+		# Though some will be duplicate, not to big a deal...
+#		nz_r = np.nonzero(self.C_mat[:, new_ind])[0]
+#		self.C_mat[nz_r, -1] = -1
+
 		print("Found (%d %d %d)->%d with %r" %(row, col, lev, new_ind, np.nonzero(self.C_mat[:, new_ind])[0]))
 
 
@@ -138,7 +142,7 @@ class Sum_Solver(object):
 					self.C_mat[row_ii, -1] -= 1
 #row_ii != row_i and 
 					if self.C_mat[row_ii, -1]==1:
-#						print('row_ii = ', row_ii, ' row_i = ', row_i)
+						print('On row=', row_ii, end=' ')
 						new_ind = np.nonzero(self.C_mat[row_ii, :-1])
 						self.found_new_cell(new_ind[0][0])
 
@@ -153,7 +157,7 @@ def test_solver():
 
 	solver = Sum_Solver()
 
-	solver.read("game1.txt")
+	solver.read("game2.txt")
 	print("Input puzzle")
 	solver.print_raw()
 
