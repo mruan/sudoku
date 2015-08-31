@@ -52,7 +52,6 @@ class Sum_Solver(object):
 
 		pair = [(i,j) for i in range(self.N) for j in range(self.N)]
 	
-		print(pair)
 		sat_count = 0
 		# For all levels
 		for (row, col) in pair:
@@ -83,6 +82,8 @@ class Sum_Solver(object):
 
 	def phase_one(self):
 
+		print(self.todo)
+
 		while len(self.todo) > 0:
 			row, col, lev = self.todo.pop()
 
@@ -90,8 +91,10 @@ class Sum_Solver(object):
 
 			print(row, col, lev, ind)
 
-#			rows_todie, cols_todie = self.do_something(ind)
-			self.do_something(ind)
+			rows_todie = self.do_something(ind)
+#			self.do_something(ind)
+
+			self.C_mat = np.delete(self.C_mat, rows_todie, 0)
 
 	def found_new_cell(self, new_ind):
 
@@ -99,12 +102,17 @@ class Sum_Solver(object):
 		self.todo.append((row, col, lev))
 		self.raw_map[row][col] = '%d' % (lev+1)
 
+		print("Found (%d %d %d)->%d with %r" %(row, col, lev, new_ind, np.nonzero(self.C_mat[:, new_ind])[0]))
+
+
 	def do_something(self, v_ind):
 
 		# Find all row where this 1 appears
 		# then remove all other variables
 		nz_r = np.nonzero(self.C_mat[:, v_ind])[0]
+		self.C_mat[nz_r.tolist(), -1] = -1
 
+		print(nz_r, '\t', v_ind)
 #		print(self.C_mat[:, v_ind])
 		for row_i in nz_r:
 
@@ -112,22 +120,29 @@ class Sum_Solver(object):
 			nz_cc = np.nonzero(self.C_mat[row_i, :-1]);
 			nz_c = nz_cc[0]
 
+			print('\t', row_i, '\t', nz_c)
 			for col_j in nz_c:
 				# Their appearance in other rows are wiped out
 				nz_rr = np.nonzero(self.C_mat[:, col_j])[0]
 
+				print('\t\t', nz_rr, '\t', col_j)
+
 				for row_ii in nz_rr:
 					# Don't double count (when wiping out)
+					if self.C_mat[row_ii, col_j] == 0:
+						continue
+
 					self.C_mat[row_ii, col_j] = 0
+					#print('%d %d' %(row_ii, col_j))
 					# Decrement count of remaining variables
 					self.C_mat[row_ii, -1] -= 1
-
-					if row_ii != row_i and self.C_mat[row_ii, -1]==1:
+#row_ii != row_i and 
+					if self.C_mat[row_ii, -1]==1:
+#						print('row_ii = ', row_ii, ' row_i = ', row_i)
 						new_ind = np.nonzero(self.C_mat[row_ii, :-1])
 						self.found_new_cell(new_ind[0][0])
 
-#		print(nz_r)
-#		return (nz_r, nz_c)
+		return nz_r
 
 
 def test_rcl2ind():
