@@ -116,6 +116,8 @@ class Sum_Solver(object):
 		nz_r = np.nonzero(self.C_mat[:, v_ind])[0]
 		self.C_mat[nz_r.tolist(), -1] = -1
 
+		erase_set = set()
+		
 		print(nz_r, '\t', v_ind)
 #		print(self.C_mat[:, v_ind])
 		for row_i in nz_r:
@@ -144,7 +146,10 @@ class Sum_Solver(object):
 					if self.C_mat[row_ii, -1]==1:
 						print('On row=', row_ii, end=' ')
 						new_ind = np.nonzero(self.C_mat[row_ii, :-1])
-						self.found_new_cell(new_ind[0][0])
+						erase_set.add(new_ind[0][0])
+
+				while len(erase_set) > 0:
+					self.found_new_cell(erase_set.pop())
 
 		return nz_r
 
