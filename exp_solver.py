@@ -106,24 +106,25 @@ class Exp_Solver(object):
 
 	def init_constraints(self):
 
-		pair = [(i,j) for i in range(self.N) for j in range(self.N)]
+		dim = range(self.N)
+		pair = [(i,j) for i in dim for j in dim]
 	
 		sat_count = 0
 		# For all levels
 		for (row, col) in pair:
-			for lev in range(self.N):
+			for lev in dim:
 				self.bool_map[sat_count, self.rcl2ind(row, col, lev)] = 1
 			sat_count += 1
 
 		# For all rows
 		for (col, lev) in pair:
-			for row in range(self.N):
+			for row in dim:
 				self.bool_map[sat_count, self.rcl2ind(row, col, lev)] = 1
 			sat_count += 1
 
 		# For all columns
 		for (row, lev) in pair:
-			for col in range(self.N):
+			for col in dim:
 				self.bool_map[sat_count, self.rcl2ind(row, col, lev)] = 1
 			sat_count += 1
 
@@ -148,6 +149,13 @@ class Exp_Solver(object):
 
 			self.eliminate_singleton(ind)
 
+	def phase_two(self):
+		"Optimize sigmoid"
+		live_var = np.nonzero(np.sum(self.bool_map, axis = 0))[0].tolist()
+
+		var = [self.ind2rcl(ind) for ind in live_var]
+		print(var)
+		print(len(live_var))
 
 def test_solver():
 
@@ -159,6 +167,7 @@ def test_solver():
 
 	solver.init_constraints()
 	solver.phase_one()
+	solver.phase_two()
 
 	print("Output puzzle")
 	solver.pprint(1)
