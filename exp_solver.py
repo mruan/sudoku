@@ -17,6 +17,8 @@ class Exp_Solver(object):
 
 		# bool_map.shape = (4*N^2, N^2) last col is count of 1s
 		self.bool_map = np.zeros((4*self.N2, self.N3), int)
+		self.inactive_rows = set()
+		self.inactive_cols = set()
 
 	def read(self, filename):
 		fh = open(filename, 'r')
@@ -70,9 +72,11 @@ class Exp_Solver(object):
 		# Find all rows(i.e. constraints) where the singleton appears
 		nz_r = np.nonzero(self.bool_map[:, ind])[0].tolist()
 		self.bool_map[nz_r, ind] = 0
+		self.inactive_rows |= set(nz_r)
 
 		# Find columns that are zeroed out due to that naked 1
 		nz_c = {c for r in nz_r for c in np.nonzero(self.bool_map[r,:])[0].tolist()}
+		self.inactive_cols |= nz_c
 		nz_c = list(nz_c) # set guarantees uniqueness
 
 		# Remove them from candidate lists
@@ -143,7 +147,7 @@ class Exp_Solver(object):
 
 			row, col, lev = self.singletons.pop()
 
-			print(row, col, lev)
+		#	print(row, col, lev)
 
 			ind = self.rcl2ind(row, col, lev)
 
@@ -151,11 +155,29 @@ class Exp_Solver(object):
 
 	def phase_two(self):
 		"Optimize sigmoid"
-		live_var = np.nonzero(np.sum(self.bool_map, axis = 0))[0].tolist()
 
-		var = [self.ind2rcl(ind) for ind in live_var]
-		print(var)
-		print(len(live_var))
+		self.active_vars = [i for i in range(self.N3) if i not in self.inactive_cols]
+		print(self.active_vars)
+		# delete rows not active any more
+		self.inactive_rows = list(self.inactive_rows)
+		self.inactive_cols = list(self.inactive_cols)
+
+		self.bool_map = np.delete(self.bool_map, self.inactive_rows, 0)
+		self.bool_map = np.delete(self.bool_map, self.inactive_cols, 1)
+
+		# Find variable indices
+		var_ind = np.nonzero(np.sum(self.bool_map, axis = 0))[0].tolist()
+
+		var = [self.ind2rcl(ind) for ind in var_ind]
+#		print(var)
+#		print(len(var))
+		np.savetxt('bm.out', self.bool_map, fmt='%d', delimiter=',')
+
+	def newton_iteration(self, xn):
+
+		sn = 1.0 / (1.0 + np.exp(-xn)) #Faster for sub-1000 arrays
+
+	#	fn = np.sum(sn[v]) - 1 for v in vm
 
 def test_solver():
 
