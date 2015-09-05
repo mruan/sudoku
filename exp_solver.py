@@ -1,5 +1,5 @@
 import numpy as np
-#import scipy as sp
+from scipy.integrate import odeint
 
 class Exp_Solver(object):
 
@@ -19,6 +19,7 @@ class Exp_Solver(object):
 		self.bool_map = np.zeros((4*self.N2, self.N3), int)
 		self.inactive_rows = set()
 		self.inactive_cols = set()
+		self.active_cols = set([i for i in range(self.N3)])
 
 	def read(self, filename):
 		fh = open(filename, 'r')
@@ -67,26 +68,32 @@ class Exp_Solver(object):
 				buffer = ' '.join(self.game_map[i])
 				print(buffer)
 
+	def eliminate_candidate(self, cand_idx):
+
+		r, c, n = self.ind2rcl(cand_idx)
+		num = '%d' % (n+1)
+		# delete this number from the candidate list
+		self.cand_map[r][c] = self.cand_map[r][c].replace(num, '')
+
 	def eliminate_singleton(self, ind):
 
 		# Find all rows(i.e. constraints) where the singleton appears
 		nz_r = np.nonzero(self.bool_map[:, ind])[0].tolist()
-		self.bool_map[nz_r, ind] = 0
 		self.inactive_rows |= set(nz_r)
 
 		# Find columns that are zeroed out due to that naked 1
 		nz_c = {c for r in nz_r for c in np.nonzero(self.bool_map[r,:])[0].tolist()}
 		self.inactive_cols |= nz_c
+		self.active_cols -= nz_c
 		nz_c = list(nz_c) # set guarantees uniqueness
 
 		# Remove them from candidate lists
-		for col_idx in nz_c:
-			self.bool_map[:, col_idx] = 0
-
-			row, col, lev = self.ind2rcl(col_idx)
-			num = '%d' % (lev+1)
-			# delete this number from the candidate list
-			self.cand_map[row][col] = self.cand_map[row][col].replace(num, '')
+		self.bool_map[nz_r, ind] = 0
+		for cand_idx in nz_c:
+			if cand_idx != ind:
+				self.bool_map[:, cand_idx] = 0
+				self.eliminate_candidate(cand_idx)
+			
 
 
 	def has_singletons(self):
@@ -157,41 +164,95 @@ class Exp_Solver(object):
 		"Optimize sigmoid"
 
 		self.active_vars = [i for i in range(self.N3) if i not in self.inactive_cols]
-		print(self.active_vars)
+#		print(self.active_vars)
 		# delete rows not active any more
 		self.inactive_rows = list(self.inactive_rows)
 		self.inactive_cols = list(self.inactive_cols)
 
 		self.bool_map = np.delete(self.bool_map, self.inactive_rows, 0)
+
+		# Find active variable indices and delete inactive ones
+		var_ind = np.nonzero(np.sum(self.bool_map, axis = 0))[0].tolist()
 		self.bool_map = np.delete(self.bool_map, self.inactive_cols, 1)
 
-		# Find variable indices
-		var_ind = np.nonzero(np.sum(self.bool_map, axis = 0))[0].tolist()
-
 		var = [self.ind2rcl(ind) for ind in var_ind]
+
+		# print(var_ind)
+		# print(self.active_cols)
 #		print(var)
 #		print(len(var))
-		np.savetxt('bm.out', self.bool_map, fmt='%d', delimiter=',')
+#		np.savetxt('bm.out', self.bool_map, fmt='%d', delimiter=',')
 
-	def newton_iteration(self, xn):
+		m, n = self.bool_map.shape
+		# print(m,n, len(var_ind))
+		y0 = 0.5 * np.ones(2*n+m)  # initialize all to 0.5
+		c = 7.0
 
-		sn = 1.0 / (1.0 + np.exp(-xn)) #Faster for sub-1000 arrays
+		for i in range(0,300,10):
+			t = np.arange(i, i+10, 1.0)
+			y = odeint(func, y0, t, args=(self.bool_map, c,))
 
-	#	fn = np.sum(sn[v]) - 1 for v in vm
+			y0 = y[-1,:]
+
+			Ax_m_b, x2mx = calc_gap(y0, self.bool_map)
+			print(i, Ax_m_b, x2mx)
+		
+
+		results = y0#y[-1, 0:n].ravel()
+		for i in range(n):
+			if results[i] < 1e-1:
+				self.eliminate_candidate(var_ind[i])
+
+def calc_gap(y, A):
+	m, n = A.shape
+	x = y[0:n]
+	Ax_m_b = np.sum((np.dot(A,x) - 1.0)**2)
+
+	x2mx  = np.sum((x**2 - x)**2)
+
+	return (Ax_m_b, x2mx)
+
+
+def func(y, t, A, c):
+	# m = 244, n= 291
+	m, n = A.shape
+	x = y[0:n]
+	u = y[n:n+m]
+	v = y[n+m:]
+
+	x2mx  = x**2 - x # x^2 - x
+	dx2mx = 2.0*x - 1.0
+
+#	b = np.ones(m)
+
+	L = np.zeros(2*n+m)
+
+	Ax_m_b = np.dot(A,x) - 1.0 #b
+
+	L[0:n] = -2.0*c*(np.dot(A.T, Ax_m_b) + x2mx*dx2mx ) - np.dot(A.T,u) - v*dx2mx
+	L[n:n+m] = Ax_m_b
+	L[n+m:] = x2mx
+
+	return L
 
 def test_solver():
 
 	solver = Exp_Solver()
 
 	solver.read("game2.txt")
-	print("Input puzzle")
+	print("\nInput puzzle")
 	solver.pprint(1)
 
 	solver.init_constraints()
 	solver.phase_one()
+
+	print("\nOutput phase1")
+	solver.pprint(1)
+
+	#print(solver.cand_map[0][0], solver.rcl2ind(0,0,4))
 	solver.phase_two()
 
-	print("Output puzzle")
+	print("\nOutput phase2")
 	solver.pprint(1)
 
 if __name__ == '__main__':
