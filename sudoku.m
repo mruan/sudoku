@@ -1,6 +1,6 @@
 function [] = sudoku()
 
-filename = 'game3.txt';
+filename = 'game6.txt';
 
 %test_conversion(); return;
 
@@ -14,16 +14,16 @@ cmat = init_cmat();
 
 % pprint(bmap);
 % 
-[cmat, bmap, nsolved] = singleton_sweep(cmat, bmap, hints);
+[cmat, bmap, nleft] = singleton_sweep(cmat, bmap, hints);
 
-if nsolved == 81
+if nleft == 0
     return;
 end
 
 fprintf('\nSweep result\n');
 pprint(bmap);
 
-fprintf('%d more spots to solve.\n', 81-nsolved);
+fprintf('%d more spots to solve.\n', nleft);
 
 % If the simple solver did not solve the problem, invoke 2nd stage
 active_rows = find(sum(cmat, 2)); % collapse columns
@@ -32,7 +32,7 @@ active_cols = find(sum(cmat, 1)); % collapse rows
 cmat = cmat(active_rows, :);
 cmat = cmat(:, active_cols);
 
-%x = solve_primal(cmat);
+% x = solve_primal(cmat);
 x = solve_linprog(cmat);
 for i = 1:numel(x)
     idx = active_cols(i);
@@ -137,8 +137,9 @@ A = [eye(n) -eye(n); -eye(n) zeros(n)];
 b = zeros(2*n, 1);
 Aeq = [cmat zeros(m, n)];
 beq = ones(m, 1);
+option = optimoptions('linprog','Algorithm','dual-simplex','Display','iter')
 
-[x, fval] = linprog(f, A, b, Aeq, beq);
+[x, fval] = linprog(f, A, b, Aeq, beq, [], [], [], option);
 
 sol = round(x(1:n));
 end
@@ -149,7 +150,7 @@ b = ones(m,1);
 
 cvx_begin
     variable x(n)
-    minimize(norm(x,1))
+    minimize(norm(x, 1))
     subject to 
         A*x == b;
 cvx_end
@@ -163,17 +164,17 @@ x = round(x);
 % end
 end
 
-function [cmat, bmap, nsolved] = singleton_sweep(cmat, bmap, hints)
+function [cmat, bmap, nleft] = singleton_sweep(cmat, bmap, hints)
     
 % rows_todie = []; % these are rows and cols in cmat, not to be 
 % cols_todie = []; % confused with (row, col, lev) which are for bmap
-nsolved = 0;
+nleft = 81;
 
 while numel(hints) > 0
     % Pop the first entry from the hint list
     idx = hints(1); %rcl2ind(row, col, lev);
     hints(1) = [];
-    nsolved = nsolved + 1;
+    nleft = nleft - 1;
         
     % For all rows where the idx col is 1:
     nz_r = find(cmat(:,idx));
