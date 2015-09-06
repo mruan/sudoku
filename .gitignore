@@ -2,6 +2,9 @@
 __pycache__/
 *.py[cod]
 
+# Matlab backup copies
+*.m~
+
 # C extensions
 *.so
 
