@@ -1,5 +1,6 @@
 import numpy as np
-from scipy.integrate import odeint
+#from scipy.integrate import odeint
+#from scipy.optimize import linprog
 
 class Exp_Solver(object):
 
@@ -175,33 +176,40 @@ class Exp_Solver(object):
 		var_ind = np.nonzero(np.sum(self.bool_map, axis = 0))[0].tolist()
 		self.bool_map = np.delete(self.bool_map, self.inactive_cols, 1)
 
-		var = [self.ind2rcl(ind) for ind in var_ind]
-
+#		var = [self.ind2rcl(ind) for ind in var_ind]
 		# print(var_ind)
 		# print(self.active_cols)
 #		print(var)
 #		print(len(var))
 #		np.savetxt('bm.out', self.bool_map, fmt='%d', delimiter=',')
+		c = np.ones(2*n)
+		A_ub = np.vstack((self.bool_map, -self.bool_map))
+		b_ub = np.ones(2*n)
 
-		m, n = self.bool_map.shape
-		# print(m,n, len(var_ind))
-		y0 = 0.5 * np.ones(2*n+m)  # initialize all to 0.5
-		c = 7.0
+		res = linprog(c, A_ub, b_ub)
 
-		for i in range(0,300,10):
-			t = np.arange(i, i+10, 1.0)
-			y = odeint(func, y0, t, args=(self.bool_map, c,))
+		np.savetxt('y.out', res.x, delimiter=',')
+		np.savetxt('x.out', res.slack[n:], delimiter=',')
 
-			y0 = y[-1,:]
+		# m, n = self.bool_map.shape
+		# # print(m,n, len(var_ind))
+		# y0 = 0.5 * np.ones(2*n+m)  # initialize all to 0.5
+		# c = 7.0
 
-			Ax_m_b, x2mx = calc_gap(y0, self.bool_map)
-			print(i, Ax_m_b, x2mx)
+		# for i in range(0,300,10):
+		# 	t = np.arange(i, i+10, 1.0)
+		# 	y = odeint(func, y0, t, args=(self.bool_map, c,))
+
+		# 	y0 = y[-1,:]
+
+		# 	Ax_m_b, x2mx = calc_gap(y0, self.bool_map)
+		# 	print(i, Ax_m_b, x2mx)
 		
 
-		results = y0#y[-1, 0:n].ravel()
-		for i in range(n):
-			if results[i] < 1e-1:
-				self.eliminate_candidate(var_ind[i])
+		# results = y0#y[-1, 0:n].ravel()
+		# for i in range(n):
+		# 	if results[i] < 1e-1:
+		# 		self.eliminate_candidate(var_ind[i])
 
 def calc_gap(y, A):
 	m, n = A.shape
@@ -239,7 +247,7 @@ def test_solver():
 
 	solver = Exp_Solver()
 
-	solver.read("game2.txt")
+	solver.read("game1.txt")
 	print("\nInput puzzle")
 	solver.pprint(1)
 
@@ -250,7 +258,7 @@ def test_solver():
 	solver.pprint(1)
 
 	#print(solver.cand_map[0][0], solver.rcl2ind(0,0,4))
-	solver.phase_two()
+#	solver.phase_two()
 
 	print("\nOutput phase2")
 	solver.pprint(1)

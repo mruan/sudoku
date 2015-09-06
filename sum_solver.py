@@ -162,7 +162,7 @@ def test_solver():
 
 	solver = Sum_Solver()
 
-	solver.read("game2.txt")
+	solver.read("game1.txt")
 	print("Input puzzle")
 	solver.print_raw()
 
